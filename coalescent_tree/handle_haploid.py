@@ -5,7 +5,7 @@ import msprime
 import tskit
 
 
-def handle_haploid(file_name, mutation_rate=None, sample_size=None, upload=False, check_coalescence=False, random_seed=None):
+def handle_haploid(file_name, mutation_rate=None, sample_size=None, load=False, check_coalescence=False, random_seed=None):
     """ Handle an haploid tree sequence named file_name + '.trees'.
         - remove the nodes that are NULL (trick for modeling haploid individuals with SLiM)
         - checks that the trees have coalesced if mutation_rate is not None
@@ -53,6 +53,9 @@ def handle_haploid(file_name, mutation_rate=None, sample_size=None, upload=False
         sample = random.sample(ind, sample_size)
         tree_seq = tree_seq.simplify(sample)
 
-    # return and load the new mutated tree
-    tree_seq.dump('./' + file_name + '_mutated.trees')
+    # load the new tree
+    if load:
+        tree_seq.dump('./' + file_name + '_mutated.trees')
+
+    # return the new tree
     return tree_seq
