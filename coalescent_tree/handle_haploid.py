@@ -1,23 +1,30 @@
-""" Handle an haploid tree sequence obtained with SLiM """
+""" Handle a tskit haploid tree sequence obtained with SLiM """
 
 import random
 import msprime
 import tskit
 
 
-def handle_haploid(file_name, mutation_rate=None, sample_size=None, load=False, check_coalescence=False, random_seed=None):
-    """ Handle an haploid tree sequence named file_name + '.trees'.
+def handle_haploid(tree_seq, mutation_rate=None, sample_size=None, check_coalescence=False, upload=False, new_name=None, random_seed=None):
+    """ Handle a tskit  haploid tree sequence named tree_seq.
         - remove the nodes that are NULL (trick for modeling haploid individuals with SLiM)
         - checks that the trees have coalesced if mutation_rate is not None
         - add neutral mutations with a rate mutation_rate according to the random seed random_seed
         - conserve only a sample of size sample_size of the current individuals
             (keep the whole tree if sample_size is None)
-        - upload the new tree sequence in a file named file_name + '_mutated.trees' if upload is True
+        - upload the new tree sequence in a file named new_name (named file_name + '.trees' if new_name is None) if upload is True
         - return the new tree sequence
+    
+    >>> tree_coalesced = tskit.load('examples/tree_coalesced.trees')
+    >>> tree_coalesced_handled = handle_haploid(tree_coalesced, sample_size=5, check_coalescence=True)
+    >>> len(tree_coalesced_handled.individuals())
+    5
+    >>> tree_not_coalesced = tskit.load('examples/tree_not_coalesced.trees')
+    >>> handle_haploid(tree_not_coalesced, check_coalescence=True)
+    Traceback (most recent call last):
+        ...
+    Exception: Tree not coalesced !
     """
-
-    tree_seq = tskit.load(file_name + '.trees')
-    tree_seq = tree_seq.simplify()
 
     # Removing chromosomes that are NULL
 
@@ -40,8 +47,8 @@ def handle_haploid(file_name, mutation_rate=None, sample_size=None, load=False, 
     if mutation_rate is not None or check_coalescence:
         # Check that the tree has coalesced
         for tree in tree_seq.trees():
-            assert tree.num_roots == 1, (
-                f'not coalesced! on segment {tree.interval[0]} to {tree.interval[1]}')
+            if tree.num_roots != 1:
+                raise Exception('Tree not coalesced !')
 
         # Add neutral mutation to the coalescent tree
         tree_seq = msprime.mutate(
@@ -54,8 +61,15 @@ def handle_haploid(file_name, mutation_rate=None, sample_size=None, load=False, 
         tree_seq = tree_seq.simplify(sample)
 
     # load the new tree
-    if load:
-        tree_seq.dump('./' + file_name + '_mutated.trees')
+    if upload:
+        if new_name is None:
+            new_name = file_name + '_handled' 
+        tree_seq.dump('./' + new_name + '.trees')
 
     # return the new tree
     return tree_seq
+
+
+if __name__ == "__main__":
+    import doctest
+    doctest.testmod()
