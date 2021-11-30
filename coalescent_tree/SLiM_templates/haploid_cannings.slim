@@ -1,0 +1,153 @@
+// Haploid neutral Cannings without mutations
+// (diploid with a NULL second genome)
+
+// Simulate a haploid population of constant size under a Cannings model and store the coalescent tree in a .trees file
+
+// The code reproduces the Cannings model describe in Schweisberg 2003 (Coalescent processes obtained from supercritical Galton–Watson processes)
+// (https://www.sciencedirect.com/science/article/pii/S0304414903000280)
+
+// population_size: size of the haploid population
+// chromosome_length: length of a chromosome
+// a: the probability that an individual has more than k offsprings is in 1/k**a
+// p0: the probability that an individual has no offsprings
+
+
+initialize() {
+  // trick for haploid with tree sequence recording
+  initializeSLiMModelType('nonWF');
+  initializeTreeSeq();
+  
+  // size of the population
+  defineConstant('population_size', 500); 
+  defineConstant('length_chromosome', 1);
+
+  // a is between 1 (Bolthausen-Snitzman) and 2 (Kingman)
+  // the probability that an individual has more than k offsprings is in 1/k**a
+  defineConstant('a', 1.1);
+  // probability that an individual has no offspring (0 <= p0 < 1)
+  defineConstant('p0', 0.1);
+  // maximum of offspring of an individual
+
+  initializeMutationType( "m1", 0.5, "f", 0.0); 
+  m1.convertToSubstitution = T; 
+  initializeGenomicElementType( "g1", m1, 1.0); 
+  initializeGenomicElement( g1, 0, length_chromosome-1); 
+
+  initializeMutationRate(0); 
+  initializeRecombinationRate(0);
+
+  // infinity will increase if we need so
+  defineGlobal('infinity', 10);
+  defineGlobal('complementary_cumulative_distribution_values',
+    initialize_complementary_cumulative_distribution());
+}
+
+
+function (float) complementary_cumulative_distribution(integer k) {
+  return (1-p0) * (k^(-a)); }
+
+function (float) initialize_complementary_cumulative_distribution(void) {
+  return c(1., sapply(1:infinity, 'complementary_cumulative_distribution(applyValue);')); }
+
+function (void) check_that_the_probability_is_included(float value)
+// make sur that complementary_cumulative_distribution_values is accurate enough
+// updating complementary_cumulative_distribution_values as long as value is smaller than all values
+{
+  while (value < complementary_cumulative_distribution_values[
+    length(complementary_cumulative_distribution_values)-1])
+    {
+      defineGlobal('infinity', infinity*2);
+      defineGlobal('complementary_cumulative_distribution_values',
+        initialize_complementary_cumulative_distribution());
+    }
+}
+
+
+function (object) surviving_offsprings_parents(object table_parents, integer table_nb_offsprings)
+// return table of parents genome repeated according to there number of surviving offsprings
+// the genome table_parent[i] is repeated table_nb_offsprings[i]
+{
+  table_parents_with_repetition = repEach(table_parents, table_nb_offsprings);
+
+  nb_total_offsprings = length(table_parents_with_repetition);
+
+  if (nb_total_offsprings < population_size) {
+    percent = (population_size-nb_total_offsprings)/population_size * 100;
+    catn('Not enought offsprings at generation ' + sim.generation + ' !');
+    catn('  Artificially adding ' + percent + '% of the offsprings');
+
+    // artificially adding offsprings so that the population size keep constant
+    artificial_parents_offsprings = sample(
+      p1.individuals, population_size-nb_total_offsprings, replace=T).genome1;
+
+    surviving_offsprings_parents = c(
+      table_parents_with_repetition, artificial_parents_offsprings);
+  } else {
+    // their will be only N surviving offsprings
+    surviving_offsprings_parents = sample(table_parents_with_repetition, population_size);
+  }
+
+  return surviving_offsprings_parents;
+}
+
+
+// Cannings reproduction (according to Schweinsberg 2003)
+reproduction() {
+
+  // the parent table_parents[i] will have table_nb_offsprings[i] offsprings
+  table_parents = c();
+  table_nb_offsprings = c();
+  
+  assert(length(sim.subpopulations.individuals) == population_size);
+
+  // visiting all the parents
+  for (i in seqLen(population_size)) {
+    genome = sim.subpopulations.individuals[i].genome1;
+    // draw of a continuous random variable between 0 and 1
+    uniform_random_value = runif(1,0,1);
+    
+    check_that_the_probability_is_included(uniform_random_value);
+
+    nb_offsprings_potential = which(complementary_cumulative_distribution_values - uniform_random_value >= 0.0);
+    // number of offsprings of the parent genome
+    nb_offsprings = nb_offsprings_potential[length(nb_offsprings_potential)-1];
+    
+    if (nb_offsprings) {
+      table_parents = c(table_parents, genome);
+      table_nb_offsprings = c(table_nb_offsprings, nb_offsprings);
+    }
+  } 
+  
+  // case very specific where there are no offsprings at all
+  if (isNULL(table_parents)) {
+    table_parents = genome1;
+    table_nb_offsprings = 0;
+  } 
+
+  // table of parents genome repeated according to there number of surviving offsprings
+  surviving_offsprings_parents = surviving_offsprings_parents(table_parents, table_nb_offsprings);
+
+  for (genome in surviving_offsprings_parents) {
+    // create an offspring by cloning the genome
+    p1.addRecombinant(genome, NULL, NULL, NULL, NULL, NULL);
+  }
+
+  // the reproduction event will be called once
+  self.active = 0;
+}
+
+
+1 early() { 
+  sim.addSubpop("p1", population_size); 
+}
+
+
+early() {
+  inds = sim.subpopulations.individuals;
+  // the parents die
+  inds[inds.age > 0].fitnessScaling = 0.0;
+} 
+
+100 late() {
+  sim.treeSeqOutput("./haploid_cannings.trees");
+}

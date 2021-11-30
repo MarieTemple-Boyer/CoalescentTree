@@ -1,0 +1,51 @@
+// Haploid neutral Wrigth-Fisher without mutations
+// (diploid with a NULL second genome)
+
+// Simulate a haploid population of constant size under a Wright-Fisher model and store the coalescent tree in a .trees file
+
+// population_size: size of the haploid population
+// chromosome_length: length of a chromosome
+
+
+initialize() {
+  // trick for haploid with tree sequence recording
+  initializeSLiMModelType( "nonWF");
+  initializeTreeSeq(checkCoalescence= T);
+
+  defineConstant('population_size', 1000);
+  defineConstant('length_chromosome', 1);
+
+  initializeMutationType( "m1", 0.5, "f", 0.0); 
+  m1.convertToSubstitution = T; 
+  initializeGenomicElementType( "g1", m1, 1.0); 
+  initializeGenomicElement( g1, 0, length_chromosome-1); 
+  
+  initializeMutationRate(0); 
+  initializeRecombinationRate(0);
+} 
+
+// Wright-Fisher reproduction
+reproduction() {
+  // each offspring choose his parent uniformly
+  parent_genomes = sample(p1.individuals, population_size, replace=T).genome1;
+
+  for (genome in parent_genomes) { 
+    p1.addRecombinant(genome, NULL, NULL, NULL, NULL, NULL);
+  } 
+  // the reproduction event will be called once
+  self.active = 0;
+}
+
+1 early() { 
+  sim.addSubpop("p1", population_size); 
+}
+
+early() {
+  inds = sim.subpopulations.individuals;
+  // the parents die
+  inds[inds.age > 0].fitnessScaling = 0.0;
+}
+
+5000 late() {
+  sim.treeSeqOutput("./haploid_WF.trees");
+}
