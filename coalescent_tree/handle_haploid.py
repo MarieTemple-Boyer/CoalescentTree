@@ -43,7 +43,7 @@ def handle_haploid(tree_seq, mutation_rate=None, check_coalescence=False, random
     if mutation_rate is not None or check_coalescence:
         # Check that the tree has coalesced
         for tree in tree_seq.trees():
-            if tree.num_roots != 1:
+            if tree.has_multiple_roots:
                 raise Exception('Tree not coalesced !')
 
         # Add neutral mutation to the coalescent tree

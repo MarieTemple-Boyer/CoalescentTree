@@ -8,6 +8,8 @@ All the functions take a .trees file as an input (generated with SLiM or msprime
 
 The module was created to handle haploid coalescent tree optained with SLiM. In the folder 'SLiM_templates' there are two examples of SLiM code that generate such coalescent trees.
 
+The submodule compare_theorie allows to compare simulated result with theoric expectations.
+
 ## Installation
 
 `python setup.py install`
