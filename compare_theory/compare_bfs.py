@@ -80,9 +80,9 @@ def compare_bfs(bfs, kingman=True, beta=False, alpha=0, bfs_label='', title=''):
 
     # plots
     plotdata = pd.DataFrame({
-        'Kingman': kingman_bfs_norm,
+        'Kingman coalescent': kingman_bfs_norm,
         bfs_label: bfs_norm,
-        f'beta coalescent of parameter alpha={alpha}': beta_bfs_norm},
+        f'Beta coalescent of parameter alpha={alpha}': beta_bfs_norm},
         index=abscissa)
 
     plotdata.plot(kind='bar', figsize=(15, 8))
