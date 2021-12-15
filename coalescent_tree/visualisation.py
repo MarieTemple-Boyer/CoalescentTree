@@ -4,11 +4,12 @@ import tskit
 from cairosvg import svg2png
 
 
-def visualisation(tree_seq, print_tree=True, load_tree=False, output_name=None):
+def visualisation(tree_seq, print_tree=True, load_tree=False, output_name=None, svg_size=None):
     """ Give a visualisation of a tskit tree_sequence named tree_seq.
         - print the tree as a string if print_tree
-        - load an image of th@e tree sequnce named output_name + '.png'
-            (or 'tree.png' if output_name is None)
+        - load an image of of the tree sequence named output_name + '.png'
+            (or 'tree.png' if output_name is None) if load_tree
+        - svg_size is a couple of intergers that corresponds to the size of the image 
     
     >>> small_tree = tskit.load('examples/small_tree.trees')
     >>> visualisation(small_tree)
@@ -30,7 +31,8 @@ def visualisation(tree_seq, print_tree=True, load_tree=False, output_name=None):
     if load_tree:
         if output_name is None:
             output_name = 'tree'
-        svg_size = (800, 250)
+        if svg_size is None:
+            svg_size = (800, 250)
         svg_string = tree_seq.draw_svg(
             size=svg_size,
             y_axis=True, y_label=" ",  # optional: show a time scale on the left
